@@ -1,0 +1,58 @@
+name: Release pipeline
+on:
+  workflow_dispatch:
+  # creates drop down for selecting version number to bump
+    inputs:
+      manual_bump:
+        description: 'Version number to increase'
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+        default: patch
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.calculate-version.outputs.version-string }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Configure version information
+        id: calculate-version
+        uses: bitshifted/git-auto-semver@v2
+        with:
+          create_tag: true
+          initial_version: 1.0.0
+          # THIS IS IMPORTANT! it will pass the required parameter to action
+          manual_bump: ${{ github.event.inputs.manual_bump }}
+      # add any other jobs you need
+  # Create release if needed (optional)
+  create-release:
+    needs: build-and-test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: content-data
+          path: content.tar.gz
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          tag_name: v${{ needs.build-and-test.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            content.tar.gz
