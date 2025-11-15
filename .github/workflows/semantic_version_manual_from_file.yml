@@ -1,0 +1,30 @@
+name: Release pipeline
+on:
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    runs-on: ubuntu-24.04
+    steps:
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Load versions from file
+        run: |
+          set -a
+          . ./.github/scripts/versions.env
+          set +a
+          echo "ORC_VERSION=$ORC_VERSION" >> $GITHUB_ENV
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          tag_name: v${{ env.ORC_VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
