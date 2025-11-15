@@ -2,7 +2,7 @@
 name: feature
 about: feature
 title: '[FEATURE]:'
-labels: feature backend frontend
+labels: ["feature","backend","frontend"]
 assignees: ''
 
 ---

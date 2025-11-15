@@ -2,7 +2,7 @@
 name: bug
 about: bug
 title: "[BUG]:"
-labels: bug backend frontend
+labels: ["bug","backend","frontend"]
 assignees: ''
 
 ---
