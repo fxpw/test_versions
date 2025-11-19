@@ -1,50 +1,66 @@
-name: Validate PR branch flow
+name: Validate branch merge rules
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, review_requested]
+    types: [opened, reopened, synchronize]
 
 jobs:
-  validate-branch-flow:
+  validate-branches:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check branches
+      - name: Check branch rules
         run: |
-          base_branch="${{ github.event.pull_request.base.ref }}"
-          head_branch="${{ github.event.pull_request.head.ref }}"
+          echo "HEAD (from): ${{ github.head_ref }}"
+          echo "BASE (to):   ${{ github.base_ref }}"
 
-          echo "Base branch: $base_branch"
-          echo "Head branch (source): $head_branch"
+          HEAD="${{ github.head_ref }}"
+          BASE="${{ github.base_ref }}"
 
-          # Проверка правил в зависимости от base branch
+          ERROR_MSG="❌ Merge from '$HEAD' to '$BASE' is not allowed by branching rules."
 
-          # 1. Если base — _local
-          if echo "$base_branch" | grep -E '^.*_local$'; then
-            if echo "$head_branch" | grep -E '^(.*_local|dev)$'; then
-              echo "OK: Для _local ветки, пул только в _local или dev."
-            else
-              echo "Ошибка: Для ветки $base_branch, пул может идти только в _local или dev, а не в $head_branch."
-              exit 1
-            fi
-          # 2. Если base — dev
-          elif [ "$base_branch" == "dev" ]; then
-            if [ "$head_branch" == "premain" ]; then
-              echo "OK: dev мерджим только в premain."
-            else
-              echo "Ошибка: Из dev можно мерджить только в premain, а не в $head_branch."
-              exit 1
-            fi
-          # 3. Если base — premain
-          elif [ "$base_branch" == "premain" ]; then
-            if [ "$head_branch" == "main" ]; then
-              echo "OK: premain мерджим только в main."
-            else
-              echo "Ошибка: Из premain только в main, а не в $head_branch."
-              exit 1
-            fi
-          else
-            echo "Ошибка: не обрабатываемая базовая ветка $base_branch."
-            exit 1
+          # 1) premain → main
+          if [[ "$HEAD" == "premain" && "$BASE" == "main" ]]; then
+            echo "✅ premain → main allowed."
+            exit 0
           fi
 
-          exit 0
+          # 2) dev → premain
+          if [[ "$HEAD" == "dev" && "$BASE" == "premain" ]]; then
+            echo "✅ dev → premain allowed."
+            exit 0
+          fi
+
+          # 3) (issue_id)_local → dev
+          # Пример: ABC-123_local → dev
+          if [[ "$HEAD" =~ ^(.+)_local$ && "$BASE" == "dev" ]]; then
+            echo "✅ ${HEAD} → dev allowed (local → dev)."
+            exit 0
+          fi
+
+          # 4) (issue_id)_local_(backend|frontend) → (issue_id)_local
+          # Примеры:
+          #   ABC-123_local_backend → ABC-123_local
+          #   ABC-123_local_frontend → ABC-123_local
+          if [[ "$HEAD" =~ ^(.+)_local_(backend|frontend)$ ]]; then
+            ISSUE_ID="${BASH_REMATCH[1]}"
+            EXPECTED_BASE="${ISSUE_ID}_local"
+
+            if [[ "$BASE" == "$EXPECTED_BASE" ]]; then
+              echo "✅ ${HEAD} → ${BASE} allowed (sub-local → local)."
+              exit 0
+            else
+              echo "❌ ${HEAD} может мержиться только в ${EXPECTED_BASE}, а не в ${BASE}."
+              exit 1
+            fi
+          fi
+
+          echo "$ERROR_MSG"
+          echo ""
+          echo "Разрешённые направления:"
+          echo "  premain              → main"
+          echo "  dev                  → premain"
+          echo "  (issue_id)_local     → dev"
+          echo "  (issue_id)_local_*   → (issue_id)_local  (* = backend | frontend)"
+          exit 1
+        shell: bash
