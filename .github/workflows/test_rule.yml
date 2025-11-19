@@ -2,49 +2,56 @@ name: Validate PR branch flow
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, review_requested]
+    types: [opened, synchronize, reopened]
 
 jobs:
-  validate-branch-flow:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Check branches
+      - name: Проверка веток по правилам
         run: |
-          base_branch="${{ github.event.pull_request.base.ref }}"
-          head_branch="${{ github.event.pull_request.head.ref }}"
+          base="${{ github.event.pull_request.base.ref }}"
+          head="${{ github.event.pull_request.head.ref }}"
 
-          echo "Base branch: $base_branch"
-          echo "Head branch (source): $head_branch"
+          echo "Целевая (base): $base"
+          echo "Источник (head): $head"
 
-          # Проверка правил в зависимости от base branch
-
-          # 1. Если base — _local
-          if echo "$base_branch" | grep -E '^.*_local$'; then
-            if echo "$head_branch" | grep -E '^(.*_local|dev)$'; then
-              echo "OK: Для _local ветки, пул только в _local или dev."
-            else
-              echo "Ошибка: Для ветки $base_branch, пул может идти только в _local или dev, а не в $head_branch."
+          # 1. premain > main
+          if [ "$base" == "main" ]; then
+            if [ "$head" != "premain" ]; then
+              echo "Ошибка: Из premain можно заливать только в main."
               exit 1
             fi
-          # 2. Если base — dev
-          elif [ "$base_branch" == "dev" ]; then
-            if [ "$head_branch" == "premain" ]; then
-              echo "OK: dev мерджим только в premain."
-            else
-              echo "Ошибка: Из dev можно мерджить только в premain, а не в $head_branch."
+          # 2. dev > premain
+          elif [ "$base" == "dev" ]; then
+            if [ "$head" != "premain" ]; then
+              echo "Ошибка: Из dev можно заливать только в premain."
               exit 1
             fi
-          # 3. Если base — premain
-          elif [ "$base_branch" == "premain" ]; then
-            if [ "$head_branch" == "main" ]; then
-              echo "OK: premain мерджим только в main."
+          # 3. (issue_id)_local_(backend|frontend) > (issue_id)_local
+          elif echo "$base" | grep -E '^([0-9A-Za-z]+)_local$'; then
+            base_issue="${base%_local}"
+            if [ "$head" == "$base" ]; then
+              echo "OK: Ветку $head можно мерджить только в $base."
+            elif echo "$head" | grep -E "^${base_issue}_local_(backend|frontend)$"; then
+              echo "OK: Ветка $head разрешена для мерджа в $base."
             else
-              echo "Ошибка: Из premain только в main, а не в $head_branch."
+              echo "Ошибка: Можно мерджить только ветку $base или ${base_issue}_local_(backend|frontend)."
+              exit 1
+            fi
+          # 4. (issue_id)_local > dev
+          elif echo "$base" | grep -E '^([0-9A-Za-z]+)_local$'; then
+            # Проверяем, что base — это именно ветка вида (issue_id)_local
+            # Тогда head должна быть только в dev
+            if [ "$base" == "$head" ]; then
+              echo "OK: Можно мерджить ветку $base в 'dev'."
+            elif [ "$head" == "dev" ]; then
+              echo "OK: Ветка $base может мерджиться в dev."
+            else
+              echo "Ошибка: Ветка $base может мерджиться только в dev."
               exit 1
             fi
           else
-            echo "Ошибка: не обрабатываемая базовая ветка $base_branch."
+            echo "Ошибка: Базовая ветка $base не подходит под правила."
             exit 1
           fi
-
-          exit 0
