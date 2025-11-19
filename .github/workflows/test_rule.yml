@@ -1,57 +1,66 @@
-name: Validate PR branch flow
+name: Validate branch merge rules
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened, synchronize]
 
 jobs:
-  validate:
+  validate-branches:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Проверка веток по правилам
+      - name: Check branch rules
         run: |
-          base="${{ github.event.pull_request.base.ref }}"
-          head="${{ github.event.pull_request.head.ref }}"
+          echo "HEAD (from): ${{ github.head_ref }}"
+          echo "BASE (to):   ${{ github.base_ref }}"
 
-          echo "Целевая (base): $base"
-          echo "Источник (head): $head"
+          HEAD="${{ github.head_ref }}"
+          BASE="${{ github.base_ref }}"
 
-          # 1. premain > main
-          if [ "$base" == "main" ]; then
-            if [ "$head" != "premain" ]; then
-              echo "Ошибка: Из premain можно заливать только в main."
-              exit 1
-            fi
-          # 2. dev > premain
-          elif [ "$base" == "dev" ]; then
-            if [ "$head" != "premain" ]; then
-              echo "Ошибка: Из dev можно заливать только в premain."
-              exit 1
-            fi
-          # 3. (issue_id)_local_(backend|frontend) > (issue_id)_local
-          elif echo "$base" | grep -E '^([0-9A-Za-z]+)_local$'; then
-            base_issue="${base%_local}"
-            if [ "$head" == "$base" ]; then
-              echo "OK: Ветку $head можно мерджить только в $base."
-            elif echo "$head" | grep -E "^${base_issue}_local_(backend|frontend)$"; then
-              echo "OK: Ветка $head разрешена для мерджа в $base."
-            else
-              echo "Ошибка: Можно мерджить только ветку $base или ${base_issue}_local_(backend|frontend)."
-              exit 1
-            fi
-          # 4. (issue_id)_local > dev
-          elif echo "$base" | grep -E '^([0-9A-Za-z]+)_local$'; then
-            # Проверяем, что base — это именно ветка вида (issue_id)_local
-            # Тогда head должна быть только в dev
-            if [ "$base" == "$head" ]; then
-              echo "OK: Можно мерджить ветку $base в 'dev'."
-            elif [ "$head" == "dev" ]; then
-              echo "OK: Ветка $base может мерджиться в dev."
-            else
-              echo "Ошибка: Ветка $base может мерджиться только в dev."
-              exit 1
-            fi
-          else
-            echo "Ошибка: Базовая ветка $base не подходит под правила."
-            exit 1
+          ERROR_MSG="❌ Merge from '$HEAD' to '$BASE' is not allowed by branching rules."
+
+          # 1) premain → main
+          if [[ "$HEAD" == "premain" && "$BASE" == "main" ]]; then
+            echo "✅ premain → main allowed."
+            exit 0
           fi
+
+          # 2) dev → premain
+          if [[ "$HEAD" == "dev" && "$BASE" == "premain" ]]; then
+            echo "✅ dev → premain allowed."
+            exit 0
+          fi
+
+          # 3) (issue_id)_local → dev
+          # Пример: ABC-123_local → dev
+          if [[ "$HEAD" =~ ^(.+)_local$ && "$BASE" == "dev" ]]; then
+            echo "✅ ${HEAD} → dev allowed (local → dev)."
+            exit 0
+          fi
+
+          # 4) (issue_id)_local_(backend|frontend) → (issue_id)_local
+          # Примеры:
+          #   ABC-123_local_backend → ABC-123_local
+          #   ABC-123_local_frontend → ABC-123_local
+          if [[ "$HEAD" =~ ^(.+)_local_(backend|frontend)$ ]]; then
+            ISSUE_ID="${BASH_REMATCH[1]}"
+            EXPECTED_BASE="${ISSUE_ID}_local"
+
+            if [[ "$BASE" == "$EXPECTED_BASE" ]]; then
+              echo "✅ ${HEAD} → ${BASE} allowed (sub-local → local)."
+              exit 0
+            else
+              echo "❌ ${HEAD} может мержиться только в ${EXPECTED_BASE}, а не в ${BASE}."
+              exit 1
+            fi
+          fi
+
+          echo "$ERROR_MSG"
+          echo ""
+          echo "Разрешённые направления:"
+          echo "  premain              → main"
+          echo "  dev                  → premain"
+          echo "  (issue_id)_local     → dev"
+          echo "  (issue_id)_local_*   → (issue_id)_local  (* = backend | frontend)"
+          exit 1
+        shell: bash
