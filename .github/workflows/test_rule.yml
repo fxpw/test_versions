@@ -1,0 +1,50 @@
+name: Validate PR branch flow
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, review_requested]
+
+jobs:
+  validate-branch-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branches
+        run: |
+          base_branch="${{ github.event.pull_request.base.ref }}"
+          head_branch="${{ github.event.pull_request.head.ref }}"
+
+          echo "Base branch: $base_branch"
+          echo "Head branch (source): $head_branch"
+
+          # Проверка правил в зависимости от base branch
+
+          # 1. Если base — _local
+          if echo "$base_branch" | grep -E '^.*_local$'; then
+            if echo "$head_branch" | grep -E '^(.*_local|dev)$'; then
+              echo "OK: Для _local ветки, пул только в _local или dev."
+            else
+              echo "Ошибка: Для ветки $base_branch, пул может идти только в _local или dev, а не в $head_branch."
+              exit 1
+            fi
+          # 2. Если base — dev
+          elif [ "$base_branch" == "dev" ]; then
+            if [ "$head_branch" == "premain" ]; then
+              echo "OK: dev мерджим только в premain."
+            else
+              echo "Ошибка: Из dev можно мерджить только в premain, а не в $head_branch."
+              exit 1
+            fi
+          # 3. Если base — premain
+          elif [ "$base_branch" == "premain" ]; then
+            if [ "$head_branch" == "main" ]; then
+              echo "OK: premain мерджим только в main."
+            else
+              echo "Ошибка: Из premain только в main, а не в $head_branch."
+              exit 1
+            fi
+          else
+            echo "Ошибка: не обрабатываемая базовая ветка $base_branch."
+            exit 1
+          fi
+
+          exit 0
