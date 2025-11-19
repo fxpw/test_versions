@@ -1,0 +1,66 @@
+name: Validate branch merge rules
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  validate-branches:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check branch rules
+        run: |
+          echo "HEAD (from): ${{ github.head_ref }}"
+          echo "BASE (to):   ${{ github.base_ref }}"
+
+          HEAD="${{ github.head_ref }}"
+          BASE="${{ github.base_ref }}"
+
+          ERROR_MSG="❌ Merge from '$HEAD' to '$BASE' is not allowed by branching rules."
+
+          # 1) premain → main
+          if [[ "$HEAD" == "premain" && "$BASE" == "main" ]]; then
+            echo "✅ premain → main allowed."
+            exit 0
+          fi
+
+          # 2) dev → premain
+          if [[ "$HEAD" == "dev" && "$BASE" == "premain" ]]; then
+            echo "✅ dev → premain allowed."
+            exit 0
+          fi
+
+          # 3) (issue_id)_local → dev
+          # Пример: ABC-123_local → dev
+          if [[ "$HEAD" =~ ^(.+)_local$ && "$BASE" == "dev" ]]; then
+            echo "✅ ${HEAD} → dev allowed (local → dev)."
+            exit 0
+          fi
+
+          # 4) (issue_id)_local_(backend|frontend) → (issue_id)_local
+          # Примеры:
+          #   ABC-123_local_backend → ABC-123_local
+          #   ABC-123_local_frontend → ABC-123_local
+          if [[ "$HEAD" =~ ^(.+)_local_(backend|frontend)$ ]]; then
+            ISSUE_ID="${BASH_REMATCH[1]}"
+            EXPECTED_BASE="${ISSUE_ID}_local"
+
+            if [[ "$BASE" == "$EXPECTED_BASE" ]]; then
+              echo "✅ ${HEAD} → ${BASE} allowed (sub-local → local)."
+              exit 0
+            else
+              echo "❌ ${HEAD} может мержиться только в ${EXPECTED_BASE}, а не в ${BASE}."
+              exit 1
+            fi
+          fi
+
+          echo "$ERROR_MSG"
+          echo ""
+          echo "Разрешённые направления:"
+          echo "  premain              → main"
+          echo "  dev                  → premain"
+          echo "  (issue_id)_local     → dev"
+          echo "  (issue_id)_local_*   → (issue_id)_local  (* = backend | frontend)"
+          exit 1
+        shell: bash
