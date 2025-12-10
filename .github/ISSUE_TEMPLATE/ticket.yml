@@ -1,0 +1,28 @@
+name: ticket
+description: ticket
+title: "[TICKET]: "
+labels: ["ticket"]
+projects: ["fxpw/15"]
+assignees:
+  - fxpw
+
+body:
+  - type: input
+    id: client
+    attributes:
+      label: Клиент
+      description: Укажите клиента и контакты для связи
+      placeholder: Например А1(номер) или A1(почта)
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия
+      description: Укажите версию
+      placeholder: 1.0.0 ... 3.0.0
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "## Законченная работа сотрудника"
