@@ -2,7 +2,6 @@ name: ticket
 description: ticket
 title: "[TICKET]: "
 labels: ["ticket"]
-projects: ["fxpw/16"]
 assignees: ["fxpw"]
 body:
   - type: input
@@ -22,5 +21,6 @@ body:
       required: true
 
   - type: input
+    id: cwow
     attributes:
       value: "## Законченная работа сотрудника"
