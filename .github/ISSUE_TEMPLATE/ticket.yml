@@ -9,7 +9,7 @@ body:
     attributes:
       label: Клиент
       description: Укажите клиента и контакты для связи
-      placeholder: Например А1(номер) или A1(почта)
+      placeholder: Например A1(почта) или ссылку на Telegram
     validations:
       required: true
 
@@ -17,7 +17,7 @@ body:
     id: version
     attributes:
       label: Версия
-      description: Укажите версию
+      description: Укажите версию продукта
       placeholder: 1.0.0 ... 3.0.0
     validations:
       required: true
