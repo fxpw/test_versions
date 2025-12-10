@@ -10,6 +10,7 @@ body:
       label: Клиент
       description: Укажите клиента и контакты для связи
       placeholder: Например А1(номер) или A1(почта)
+    validations:
       required: true
 
   - type: input
@@ -18,9 +19,18 @@ body:
       label: Версия
       description: Укажите версию
       placeholder: 1.0.0 ... 3.0.0
+    validations:
       required: true
 
-  - type: input
+  - type: textarea
     id: cwow
     attributes:
-      value: "## Законченная работа сотрудника"
+      label: "## Законченная работа сотрудника"
+      value: |
+        1.
+        2.
+        3.
+        ...
+      render: bash
+    validations:
+      required: true
