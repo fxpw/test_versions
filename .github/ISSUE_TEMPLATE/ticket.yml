@@ -3,9 +3,7 @@ description: ticket
 title: "[TICKET]: "
 labels: ["ticket"]
 projects: ["fxpw/16"]
-assignees:
-  - fxpw
-
+assignees: ["fxpw"]
 body:
   - type: input
     id: client
