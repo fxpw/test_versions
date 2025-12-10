@@ -1,0 +1,28 @@
+name: bug
+description: bug
+title: "[BUG]: "
+labels: ["bug", "backend", "frontend"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: "## Backend"
+
+  - type: checkboxes
+    id: backend_tasks
+    attributes:
+      label: Задачи backend
+      options:
+        - label: нет задач
+
+  - type: markdown
+    attributes:
+      value: "## Frontend"
+
+  - type: checkboxes
+    id: frontend_tasks
+    attributes:
+      label: Задачи frontend
+      options:
+        - label: нет задач

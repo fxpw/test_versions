@@ -1,0 +1,11 @@
+name: discuss
+description: discuss
+title: "[DISCUSS]: "
+labels: ["discuss"]
+assignees:
+  - fxpw
+
+body:
+  - type: markdown
+    attributes:
+      value: "## Обсуждение\nНапишите здесь детали, которые хотите обсудить."
