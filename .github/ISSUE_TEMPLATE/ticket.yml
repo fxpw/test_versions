@@ -2,7 +2,7 @@ name: ticket
 description: ticket
 title: "[TICKET]: "
 labels: ["ticket"]
-projects: ["fxpw/15"]
+projects: ["fxpw/16"]
 assignees:
   - fxpw
 
@@ -23,6 +23,6 @@ body:
       placeholder: 1.0.0 ... 3.0.0
       required: true
 
-  - type: markdown
+  - type: input
     attributes:
       value: "## Законченная работа сотрудника"
